@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
 use OpenApi\Context;
 use OpenApi\GeneratorAwareInterface;
 use OpenApi\GeneratorAwareTrait;
+use OpenApi\Type\TypeInfoTypeResolver;
 use OpenApi\Undefined;
 
 /**
@@ -61,7 +62,18 @@ class AugmentProperties implements GeneratorAwareInterface
             }
 
             if (Undefined::isDefault($property->type)) {
-                $this->generator->getTypeResolver()->augmentSchemaType($analysis, $property);
+                if ($context->is('virtualType') && $this->generator->getTypeResolver() instanceof TypeInfoTypeResolver && $reflector instanceof \Reflector) {
+                    $this->generator->getTypeResolver()->augmentSchemaTypeFromString(
+                        $analysis,
+                        $property,
+                        $context->virtualType,
+                        $reflector,
+                        OA\Schema::class,
+                        $context->schemaRefs ?? [],
+                    );
+                } else {
+                    $this->generator->getTypeResolver()->augmentSchemaType($analysis, $property);
+                }
             }
 
             $this->generator->getTypeResolver()->mapNativeType($property, $property->type);

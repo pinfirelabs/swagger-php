@@ -27,6 +27,56 @@ class Schema extends AbstractAnnotation
     use JsonSchemaTrait;
 
     /**
+     * Source schema to compose from. This is swagger-php source metadata and
+     * is expanded to either OpenAPI allOf or a materialized schema.
+     *
+     * @var string|class-string|object
+     */
+    public $base = Undefined::UNDEFINED;
+
+    /**
+     * Names of PHP properties to include in this schema.
+     *
+     * @var list<string>
+     */
+    public $pick = Undefined::UNDEFINED;
+
+    /**
+     * Names of inherited or locally selected PHP properties to exclude.
+     *
+     * @var list<string>
+     */
+    public $omit = Undefined::UNDEFINED;
+
+    /**
+     * Source property name to serialized property name mappings.
+     *
+     * @var array<string,string>
+     */
+    public $rename = Undefined::UNDEFINED;
+
+    /**
+     * Mark this schema as the default OpenAPI representation of its PHP class.
+     *
+     * @var bool
+     */
+    public $canonical = Undefined::UNDEFINED;
+
+    /**
+     * Per-schema PHP class to OpenAPI schema mappings.
+     *
+     * @var array<string,string>
+     */
+    public $refs = Undefined::UNDEFINED;
+
+    /**
+     * PHPStan/Psalm alias used as this schema's source type.
+     *
+     * @var string
+     */
+    public $typeAlias = Undefined::UNDEFINED;
+
+    /**
      * The relative or absolute path to the endpoint.
      *
      * @see [Reference Object](https://spec.openapis.org/oas/v3.1.1.html#reference-object)
@@ -292,6 +342,11 @@ class Schema extends AbstractAnnotation
      * @inheritdoc
      */
     public static $_types = [
+        'base' => 'string',
+        'pick' => '[string]',
+        'omit' => '[string]',
+        'canonical' => 'boolean',
+        'typeAlias' => 'string',
         'title' => 'string',
         'description' => 'string',
         'required' => '[string]',
@@ -313,6 +368,23 @@ class Schema extends AbstractAnnotation
         'anyOf' => '[' . Schema::class . ']',
         'contentEncoding' => 'string',
         'contentMediaType' => 'string',
+    ];
+
+    /**
+     * @inheritdoc
+     */
+    public static $_blacklist = [
+        '_context',
+        '_unmerged',
+        '_analysis',
+        'attachables',
+        'base',
+        'pick',
+        'omit',
+        'rename',
+        'canonical',
+        'refs',
+        'typeAlias',
     ];
 
     /**

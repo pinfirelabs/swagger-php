@@ -8,6 +8,7 @@ namespace OpenApi\Type;
 
 use OpenApi\Utils\TypeMapper;
 use PHPStan\PhpDocParser\Ast\PhpDoc\ParamTagValueNode;
+use PHPStan\PhpDocParser\Ast\PhpDoc\PropertyTagValueNode;
 use PHPStan\PhpDocParser\Ast\PhpDoc\ReturnTagValueNode;
 use PHPStan\PhpDocParser\Ast\PhpDoc\VarTagValueNode;
 use PHPStan\PhpDocParser\Lexer\Lexer;
@@ -80,6 +81,74 @@ class TypeResolver
         $this->applyNativeTypeMapping($result);
 
         return $result;
+    }
+
+    /**
+     * Resolve a PHPDoc type string in the namespace/import context of a
+     * reflector. Used for virtual class properties declared with @property.
+     */
+    public function resolveTypeString(string $type, \Reflector $reflector): ?SchemaType
+    {
+        try {
+            $typeContext = (new TypeContextFactory())->createFromReflection($reflector);
+            $resolved = (new StringTypeResolver())->resolve($type, $typeContext);
+        } catch (UnsupportedException) {
+            return null;
+        }
+
+        $nullable = $resolved instanceof NullableType;
+        $resolved = $resolved instanceof NullableType ? $resolved->getWrappedType() : $resolved;
+        if (!$resolved instanceof Type) {
+            return $nullable ? new SchemaType(nullable: true) : null;
+        }
+
+        $result = $this->mapType($resolved);
+        $result->nullable = $nullable ?: null;
+        $this->applyNativeTypeMapping($result);
+
+        return $result;
+    }
+
+    /**
+     * Extract virtual properties from a class-level PHPDoc block.
+     *
+     * @return list<array{name: string, type: string, description: string, readOnly: bool, writeOnly: bool}>
+     */
+    public function getDocblockProperties(\ReflectionClass $class): array
+    {
+        $docComment = $class->getDocComment();
+        if (!$docComment) {
+            return [];
+        }
+
+        $lexer = new Lexer(new ParserConfig([]));
+        $config = new ParserConfig([]);
+        $constExprParser = new ConstExprParser($config);
+        $phpDocParser = new PhpDocParser(
+            $config,
+            new TypeParser($config, $constExprParser),
+            $constExprParser,
+        );
+        $tokens = new TokenIterator($lexer->tokenize($docComment));
+        $docNode = $phpDocParser->parse($tokens);
+
+        $properties = [];
+        foreach (['@property' => [false, false], '@property-read' => [true, false], '@property-write' => [false, true]] as $tagName => [$readOnly, $writeOnly]) {
+            foreach ($docNode->getTagsByName($tagName) as $tag) {
+                if (!$tag->value instanceof PropertyTagValueNode) {
+                    continue;
+                }
+                $properties[] = [
+                    'name' => ltrim($tag->value->propertyName, '$'),
+                    'type' => (string) $tag->value->type,
+                    'description' => $tag->value->description,
+                    'readOnly' => $readOnly,
+                    'writeOnly' => $writeOnly,
+                ];
+            }
+        }
+
+        return $properties;
     }
 
     protected function mapType(Type $type): SchemaType

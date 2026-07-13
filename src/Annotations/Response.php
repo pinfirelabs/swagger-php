@@ -19,6 +19,14 @@ use OpenApi\Undefined;
  */
 class Response extends AbstractAnnotation
 {
+    /** @var string|class-string|object */
+    public $schema = Undefined::UNDEFINED;
+
+    /** @var list<string|class-string|object> */
+    public $oneOf = Undefined::UNDEFINED;
+
+    /** @var list<string|class-string|object> */
+    public $anyOf = Undefined::UNDEFINED;
     /**
      * The relative or absolute path to a response.
      *
@@ -97,6 +105,9 @@ class Response extends AbstractAnnotation
         Link::class => ['links', 'link'],
         Attachable::class => ['attachables'],
     ];
+
+    /** @inheritdoc */
+    public static $_blacklist = ['_context', '_unmerged', '_analysis', 'attachables', 'schema', 'oneOf', 'anyOf'];
 
     /**
      * @inheritdoc

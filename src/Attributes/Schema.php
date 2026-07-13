@@ -14,6 +14,11 @@ class Schema extends OA\Schema
 {
     /**
      * @param string|class-string|object|null                              $ref
+     * @param string|class-string|object|null                              $base
+     * @param list<string>|null                                            $pick
+     * @param list<string>|null                                            $omit
+     * @param array<string,string>|null                                    $rename
+     * @param array<class-string,string>|null                              $refs
      * @param list<string>                                                 $required
      * @param list<Property>                                               $properties
      * @param string|non-empty-array<string>|null                          $type
@@ -79,10 +84,26 @@ class Schema extends OA\Schema
 
         // abstract annotation
         ?array $x = null,
-        ?array $attachables = null
+        ?array $attachables = null,
+
+        // swagger-php source metadata
+        string|object|null $base = null,
+        ?array $pick = null,
+        ?array $omit = null,
+        ?array $rename = null,
+        ?bool $canonical = null,
+        ?array $refs = null,
+        ?string $typeAlias = null,
     ) {
         parent::__construct([
             'ref' => $ref ?? Undefined::UNDEFINED,
+            'base' => $base ?? Undefined::UNDEFINED,
+            'pick' => $pick ?? Undefined::UNDEFINED,
+            'omit' => $omit ?? Undefined::UNDEFINED,
+            'rename' => $rename ?? Undefined::UNDEFINED,
+            'canonical' => $canonical ?? Undefined::UNDEFINED,
+            'refs' => $refs ?? Undefined::UNDEFINED,
+            'typeAlias' => $typeAlias ?? Undefined::UNDEFINED,
             'schema' => $schema ?? Undefined::UNDEFINED,
             'title' => $title ?? Undefined::UNDEFINED,
             'description' => $description,

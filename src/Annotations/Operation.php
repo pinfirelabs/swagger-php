@@ -22,6 +22,12 @@ use OpenApi\Undefined;
 abstract class Operation extends AbstractAnnotation
 {
     /**
+     * Source-only shorthand for a required application/json request body.
+     *
+     * @var string|class-string|object
+     */
+    public $body = Undefined::UNDEFINED;
+    /**
      * Key in the OpenApi "Paths Object" for this operation.
      *
      * @var string
@@ -190,6 +196,9 @@ abstract class Operation extends AbstractAnnotation
         RequestBody::class => 'requestBody',
         Attachable::class => ['attachables'],
     ];
+
+    /** @inheritdoc */
+    public static $_blacklist = ['_context', '_unmerged', '_analysis', 'attachables', 'body'];
 
     public function jsonSerialize(): \stdClass
     {

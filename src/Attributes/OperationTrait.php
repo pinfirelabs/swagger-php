@@ -35,7 +35,10 @@ trait OperationTrait
 
         // abstract annotation
         ?array $x = null,
-        ?array $attachables = null
+        ?array $attachables = null,
+
+        // swagger-php source metadata
+        string|object|null $body = null,
     ) {
         parent::__construct([
                 'path' => $path ?? Undefined::UNDEFINED,
@@ -45,11 +48,14 @@ trait OperationTrait
                 'security' => $security ?? Undefined::UNDEFINED,
                 'servers' => $servers ?? Undefined::UNDEFINED,
                 'tags' => $tags ?? Undefined::UNDEFINED,
+                'parameters' => $parameters ?? Undefined::UNDEFINED,
+                'responses' => $responses ?? Undefined::UNDEFINED,
                 'callbacks' => $callbacks ?? Undefined::UNDEFINED,
                 'deprecated' => $deprecated ?? Undefined::UNDEFINED,
                 'x' => $x ?? Undefined::UNDEFINED,
                 'attachables' => $attachables ?? Undefined::UNDEFINED,
-                'value' => $this->combine($requestBody, $responses, $parameters, $externalDocs),
+                'body' => $body ?? Undefined::UNDEFINED,
+                'value' => $this->combine($requestBody, $externalDocs),
             ]);
     }
 }

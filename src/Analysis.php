@@ -369,6 +369,13 @@ class Analysis
             if (array_key_exists($fqdn, $definitions)) {
                 $definition = $definitions[$fqdn];
                 if (is_iterable($definition['context']->annotations)) {
+                    if ($sourceClass === OA\Schema::class) {
+                        foreach ($definition['context']->annotations as $annotation) {
+                            if ($annotation instanceof OA\Schema && $annotation->isRoot(OA\Schema::class) && $annotation->canonical === true && !$annotation->_context->is('generated')) {
+                                return $annotation;
+                            }
+                        }
+                    }
                     /** @var OA\AbstractAnnotation $annotation */
                     foreach (array_reverse($definition['context']->annotations) as $annotation) {
                         if ($annotation instanceof $sourceClass && $annotation->isRoot($sourceClass) && !$annotation->_context->is('generated')) {
@@ -376,6 +383,17 @@ class Analysis
                         }
                     }
                 }
+            }
+        }
+
+        return null;
+    }
+
+    public function getSchemaByName(string $name): ?OA\Schema
+    {
+        foreach ($this->getAnnotationsOfType(OA\Schema::class) as $schema) {
+            if ($schema->isRoot(OA\Schema::class) && $schema->schema === $name) {
+                return $schema;
             }
         }
 

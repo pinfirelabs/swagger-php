@@ -28,6 +28,9 @@ abstract class AbstractTypeResolver implements TypeResolverInterface
             if (($typeSchema = $analysis->getAnnotationForSource($schema->type, $sourceClass)) instanceof AbstractAnnotation) {
                 $schema->type = Undefined::UNDEFINED;
                 $schema->ref = OA\Components::ref($typeSchema);
+            } elseif (($typeSchema = $analysis->getSchemaByName((string) $schema->type)) instanceof OA\Schema) {
+                $schema->type = Undefined::UNDEFINED;
+                $schema->ref = OA\Components::ref($typeSchema);
             }
         }
     }

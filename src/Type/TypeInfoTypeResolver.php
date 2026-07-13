@@ -47,6 +47,61 @@ class TypeInfoTypeResolver extends AbstractTypeResolver
         $this->handlePostAugment($schema);
     }
 
+    /**
+     * Augment a generated virtual property from a PHPDoc type string.
+     */
+    public function augmentSchemaTypeFromString(Analysis $analysis, OA\Schema $schema, string $type, \Reflector $reflector, string $sourceClass = OA\Schema::class, array $refs = []): void
+    {
+        $schemaType = $this->resolver->resolveTypeString($type, $reflector);
+        if (!$schemaType instanceof SchemaType) {
+            return;
+        }
+
+        $this->applySourceRefs($schemaType, $refs);
+
+        if (Undefined::isDefault($schema->nullable) && $schemaType->nullable === true) {
+            $schema->nullable = true;
+        }
+        if (Undefined::isDefault($schema->type, $schema->oneOf, $schema->allOf, $schema->anyOf)) {
+            $this->applyToAnnotation($schema, $schemaType, $analysis, $sourceClass);
+        }
+        $this->type2ref($schema, $analysis, $sourceClass);
+        $this->handlePostAugment($schema);
+    }
+
+    /**
+     * @param array<string,string> $refs
+     */
+    private function applySourceRefs(SchemaType $schemaType, array $refs): void
+    {
+        if (is_string($schemaType->type)) {
+            foreach ($refs as $source => $target) {
+                if (ltrim($schemaType->type, '\\') === ltrim($source, '\\')) {
+                    $schemaType->type = $target;
+                    break;
+                }
+            }
+        }
+        if ($schemaType->items instanceof SchemaType) {
+            $this->applySourceRefs($schemaType->items, $refs);
+        }
+        if ($schemaType->additionalProperties instanceof SchemaType) {
+            $this->applySourceRefs($schemaType->additionalProperties, $refs);
+        }
+        foreach (['oneOf', 'allOf', 'anyOf'] as $property) {
+            foreach ($schemaType->{$property} ?? [] as $child) {
+                if ($child instanceof SchemaType) {
+                    $this->applySourceRefs($child, $refs);
+                }
+            }
+        }
+        foreach ($schemaType->properties ?? [] as $property) {
+            if ($property instanceof SchemaType) {
+                $this->applySourceRefs($property, $refs);
+            }
+        }
+    }
+
     protected function handlePostAugment(OA\Schema $schema): void
     {
         if ($schema->items instanceof OA\Items) {

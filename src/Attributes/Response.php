@@ -17,6 +17,9 @@ class Response extends OA\Response
      * @param list<Header>                                                                                   $headers
      * @param MediaType|JsonContent|XmlContent|Attachable|array<MediaType|JsonContent|XmlContent|Attachable> $content
      * @param list<Link>                                                                                     $links
+     * @param string|class-string|object|null                                                                $schema
+     * @param list<string|class-string|object>|null                                                          $oneOf
+     * @param list<string|class-string|object>|null                                                          $anyOf
      * @param array<string,mixed>|null                                                                       $x
      * @param list<Attachable>|null                                                                          $attachables
      */
@@ -30,7 +33,12 @@ class Response extends OA\Response
 
         // abstract annotation
         ?array $x = null,
-        ?array $attachables = null
+        ?array $attachables = null,
+
+        // swagger-php source metadata
+        string|object|null $schema = null,
+        ?array $oneOf = null,
+        ?array $anyOf = null,
     ) {
         parent::__construct([
             'ref' => $ref ?? Undefined::UNDEFINED,
@@ -38,6 +46,9 @@ class Response extends OA\Response
             'description' => $description,
             'x' => $x ?? Undefined::UNDEFINED,
             'attachables' => $attachables ?? Undefined::UNDEFINED,
+            'schema' => $schema ?? Undefined::UNDEFINED,
+            'oneOf' => $oneOf ?? Undefined::UNDEFINED,
+            'anyOf' => $anyOf ?? Undefined::UNDEFINED,
             'value' => $this->combine($headers, $content, $links),
         ]);
     }
