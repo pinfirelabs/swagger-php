@@ -49,6 +49,12 @@ final class ExpandSchemaPropertiesTest extends OpenApiTestCase
         $this->assertSame(Undefined::UNDEFINED, $withoutName->allOf);
         $this->assertSame(['id', 'active', 'children'], array_map(static fn (OA\Property $property): string => $property->property, $withoutName->properties));
         $this->assertSame(['id'], $withoutName->required);
+
+        $formattedName = $this->schema($analysis, 'VirtualUserFormattedName')->properties[0];
+        $this->assertSame('name', $formattedName->property);
+        $this->assertSame('string', $formattedName->type);
+        $this->assertSame('Display name', $formattedName->description);
+        $this->assertSame('email', $formattedName->format);
     }
 
     public function testDocblockAnnotationsUseTheSameProjectionSyntax(): void

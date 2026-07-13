@@ -149,17 +149,32 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
             $analysis->addAnnotation($property, $property->_context);
         }
 
-        // Existing explicit properties are always the final override.
-        foreach ((array) $schema->properties as $property) {
-            if (!$property instanceof OA\Property) {
+        // Existing explicit properties are always the final override. When an
+        // override targets a property inferred from PHP reflection or PHPDoc,
+        // merge it into that inferred property so its type and description
+        // remain the single source of truth.
+        foreach ((array) $schema->properties as $explicitProperty) {
+            if (!$explicitProperty instanceof OA\Property) {
                 continue;
             }
-            $name = Undefined::isDefault($property->property) ? $property->_context->property : $property->property;
+            $name = Undefined::isDefault($explicitProperty->property) ? $explicitProperty->_context->property : $explicitProperty->property;
             if (!is_string($name) || in_array($name, $omit, true)) {
                 continue;
             }
+            $property = $explicitProperty;
+            if (isset($pool[$name])) {
+                $property = $pool[$name];
+                foreach (get_object_vars($explicitProperty) as $propertyName => $value) {
+                    if (str_starts_with($propertyName, '_') || Undefined::isDefault($value)) {
+                        continue;
+                    }
+                    $property->{$propertyName} = $value;
+                }
+                $analysis->removeAnnotation($explicitProperty);
+            }
             $property->property = $name;
             $properties[$name] = $property;
+            $analysis->addAnnotation($property, $property->_context);
         }
 
         $required = [];

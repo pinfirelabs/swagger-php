@@ -31,6 +31,11 @@ use OpenApi\Attributes as OAT;
     base: 'VirtualUserWithChildren',
     omit: ['name'],
 )]
+#[OAT\Schema(
+    schema: 'VirtualUserFormattedName',
+    pick: ['name'],
+    properties: [new OAT\Property(property: 'name', format: 'email')],
+)]
 class ExpandedSchemaProperties
 {
 }
