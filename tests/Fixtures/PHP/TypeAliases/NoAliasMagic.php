@@ -9,22 +9,11 @@ namespace OpenApi\Tests\Fixtures\PHP\TypeAliases;
 use OpenApi\Attributes as OAT;
 
 /**
- * @phpstan-type ItemList OrderItem[]
- *
  * @property OrderItem[]    $list
  * @property OrderItem      $one
  * @property OrderItem|null $maybe
- * @property ItemList       $aliased
  */
-#[OAT\Schema(
-    schema: 'Magic',
-    pick: [
-        'list',
-        'one',
-        'maybe',
-        'aliased',
-    ],
-)]
-class MagicProps
+#[OAT\Schema(schema: 'NoAliasMagic', pick: ['list', 'one', 'maybe'])]
+class NoAliasMagic
 {
 }

@@ -152,6 +152,51 @@ final class ExpandTypeAliasesTest extends OpenApiTestCase
         $this->assertArrayNotHasKey('$ref', $schemas['Order']['properties']['line']);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function nullableRef(string $name, string $version): array
+    {
+        return $version === OA\OpenApi::VERSION_3_0_0
+            ? ['oneOf' => [['$ref' => self::REF . $name]], 'nullable' => true]
+            : ['oneOf' => [['$ref' => self::REF . $name], ['type' => 'null']]];
+    }
+
+    #[DataProvider('versions')]
+    public function testPickPoolClassTypedProperties(string $version): void
+    {
+        $schemas = $this->schemas(
+            ['PHP/TypeAliases/MagicProps.php', 'PHP/TypeAliases/OrderItem.php'],
+            new TypeInfoTypeResolver(),
+            $version,
+        );
+        $properties = $schemas['Magic']['properties'];
+
+        // Class-typed @property tags become $refs at every nesting position; an
+        // alias-typed @property refs the promoted alias component.
+        $this->assertEquals(['type' => 'array', 'items' => ['$ref' => self::REF . 'OrderItem']], $properties['list']);
+        $this->assertEquals(['$ref' => self::REF . 'OrderItem'], $properties['one']);
+        $this->assertEquals($this->nullableRef('OrderItem', $version), $properties['maybe']);
+        $this->assertEquals(['$ref' => self::REF . 'ItemList'], $properties['aliased']);
+    }
+
+    #[DataProvider('versions')]
+    public function testPickPoolClassTypedPropertiesWithoutAliases(string $version): void
+    {
+        // The RecHub case: class-typed @property tags on a class that declares no
+        // aliases at all (empty registry) must still resolve to $refs, not double-arrays.
+        $schemas = $this->schemas(
+            ['PHP/TypeAliases/NoAliasMagic.php', 'PHP/TypeAliases/OrderItem.php'],
+            new TypeInfoTypeResolver(),
+            $version,
+        );
+        $properties = $schemas['NoAliasMagic']['properties'];
+
+        $this->assertEquals(['type' => 'array', 'items' => ['$ref' => self::REF . 'OrderItem']], $properties['list']);
+        $this->assertEquals(['$ref' => self::REF . 'OrderItem'], $properties['one']);
+        $this->assertEquals($this->nullableRef('OrderItem', $version), $properties['maybe']);
+    }
+
     public function testCleanUnusedComponentsPrunesAlias(): void
     {
         $files = ['PHP/TypeAliases/OrphanAlias.php'];
