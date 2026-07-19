@@ -26,7 +26,7 @@ class TypeInfoTypeResolver extends AbstractTypeResolver
      */
     protected function doAugment(Analysis $analysis, OA\Schema $schema, \Reflector $reflector, string $sourceClass = OA\Schema::class): void
     {
-        $schemaType = $this->resolver->resolve($reflector);
+        $schemaType = $this->resolver->resolve($reflector, $analysis->typeAliasSchemas);
 
         if (!$schemaType instanceof SchemaType) {
             $this->handlePostAugment($schema);
@@ -52,7 +52,7 @@ class TypeInfoTypeResolver extends AbstractTypeResolver
      */
     public function augmentSchemaTypeFromString(Analysis $analysis, OA\Schema $schema, string $type, \Reflector $reflector, string $sourceClass = OA\Schema::class, array $refs = []): void
     {
-        $schemaType = $this->resolver->resolveTypeString($type, $reflector);
+        $schemaType = $this->resolver->resolveTypeString($type, $reflector, true, $analysis->typeAliasSchemas);
         if (!$schemaType instanceof SchemaType) {
             return;
         }

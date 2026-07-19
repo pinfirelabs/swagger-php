@@ -246,6 +246,7 @@ class Generator
                 new Processors\ExpandTraits(),
                 new Processors\ExpandEnums(),
                 new Processors\AugmentSchemas(),
+                new Processors\ExpandTypeAliases(),
                 new Processors\ExpandSchemaProperties(),
                 new Processors\ApplyOperationDefaults(),
                 new Processors\NormalizeOperationShorthand(),

@@ -11,6 +11,7 @@ use OpenApi\Annotations as OA;
 use OpenApi\Context;
 use OpenApi\GeneratorAwareInterface;
 use OpenApi\GeneratorAwareTrait;
+use OpenApi\Type\TypeAliases;
 use OpenApi\Type\TypeInfoTypeResolver;
 use OpenApi\Type\TypeResolver;
 use OpenApi\Undefined;
@@ -25,6 +26,8 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
 
     private TypeResolver $typeResolver;
 
+    private TypeAliases $typeAliases;
+
     /** @var array<int,array{properties: array<string,OA\Property>,required: list<string>}> */
     private array $expanded = [];
 
@@ -34,6 +37,7 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
     public function __construct()
     {
         $this->typeResolver = new TypeResolver();
+        $this->typeAliases = new TypeAliases();
     }
 
     public function __invoke(Analysis $analysis): void
@@ -65,10 +69,22 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
 
             return;
         }
+
+        // When the typeAlias names a declared @phpstan-type/@psalm-type alias on the
+        // source class, expand its definition inline so the bound schema carries the
+        // alias body rather than referencing itself.
+        $typeString = $schema->typeAlias;
+        if ($context->reflector instanceof \ReflectionClass) {
+            $aliases = $this->typeAliases->forClass($context->reflector);
+            if (isset($aliases[$typeString]) && $aliases[$typeString]['type'] !== null) {
+                $typeString = $aliases[$typeString]['type'];
+            }
+        }
+
         $this->generator->getTypeResolver()->augmentSchemaTypeFromString(
             $analysis,
             $schema,
-            $schema->typeAlias,
+            $typeString,
             $context->reflector,
             OA\Schema::class,
             Undefined::isDefault($schema->refs) ? [] : $schema->refs,

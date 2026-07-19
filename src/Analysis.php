@@ -43,6 +43,18 @@ class Analysis
      */
     public ?OA\OpenApi $openapi = null;
 
+    /**
+     * Registry of promoted PHPStan/Psalm type aliases.
+     *
+     * Maps an alias marker string (see <code>TypeAliases::marker()</code>) to the
+     * generated or bound <code>OA\Schema</code> component that represents it. Populated
+     * by the <code>ExpandTypeAliases</code> processor and consumed by
+     * <code>AbstractTypeResolver::type2ref()</code> to turn alias usages into <code>$ref</code>s.
+     *
+     * @var array<string, OA\Schema>
+     */
+    public array $typeAliasSchemas = [];
+
     public ?Context $context = null;
 
     /**

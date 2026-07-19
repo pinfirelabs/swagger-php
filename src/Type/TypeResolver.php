@@ -55,12 +55,15 @@ class TypeResolver
 
     protected PhpDocParser $phpDocParser;
 
+    protected TypeAliases $typeAliases;
+
     public function __construct()
     {
         $this->typeMapper = new TypeMapper();
         $this->typeContextFactory = new TypeContextFactory(new \Symfony\Component\TypeInfo\TypeResolver\StringTypeResolver());
         $this->bareTypeContextFactory = new TypeContextFactory();
         $this->stringTypeResolver = new StringTypeResolver();
+        $this->typeAliases = new TypeAliases();
 
         $config = new ParserConfig([]);
         $constExprParser = new ConstExprParser($config);
@@ -89,10 +92,11 @@ class TypeResolver
      * Resolve the PHP type of a reflector into a SchemaType.
      *
      * @param \ReflectionProperty|\ReflectionParameter|\ReflectionMethod|\ReflectionClassConstant $reflector
+     * @param array<string, mixed>                                                                $liveMarkers registered alias markers (see TypeAliases) that should resolve to $refs
      */
-    public function resolve(\Reflector $reflector): ?SchemaType
+    public function resolve(\Reflector $reflector, array $liveMarkers = []): ?SchemaType
     {
-        $docblockType = $this->getDocblockType($reflector);
+        $docblockType = $this->getDocblockType($reflector, $liveMarkers);
         $reflectionType = $this->getReflectionType($reflector);
 
         if (!$docblockType && !$reflectionType) {
@@ -122,28 +126,92 @@ class TypeResolver
 
     /**
      * Resolve a PHPDoc type string in the namespace/import context of a
-     * reflector. Used for virtual class properties declared with @property.
+     * reflector. Used for virtual class properties declared with @property and
+     * for promoted type aliases.
+     *
+     * When <code>$aliasMarkers</code> is true and the reflector belongs to a class
+     * that declares registered PHPStan/Psalm type aliases, alias usages resolve to
+     * markers that later become <code>$ref</code>s; otherwise aliases expand inline.
+     *
+     * @param array<string, mixed> $liveMarkers registered alias markers (see TypeAliases)
      */
-    public function resolveTypeString(string $type, \Reflector $reflector): ?SchemaType
+    public function resolveTypeString(string $type, \Reflector $reflector, bool $aliasMarkers = true, array $liveMarkers = []): ?SchemaType
     {
         try {
-            $typeContext = (new TypeContextFactory())->createFromReflection($reflector);
-            $resolved = (new StringTypeResolver())->resolve($type, $typeContext);
-        } catch (UnsupportedException) {
+            $typeContext = $this->createTypeContext($reflector);
+            if ($aliasMarkers && ($class = $this->declaringClass($reflector)) instanceof \ReflectionClass) {
+                $typeContext = $this->createAliasMarkerContext($class, $typeContext, $liveMarkers);
+            }
+            $resolved = $this->stringTypeResolver->resolve($type, $typeContext);
+        } catch (\Throwable) {
             return null;
         }
 
         $nullable = $resolved instanceof NullableType;
         $resolved = $resolved instanceof NullableType ? $resolved->getWrappedType() : $resolved;
-        if (!$resolved instanceof Type) {
-            return $nullable ? new SchemaType(nullable: true) : null;
-        }
 
         $result = $this->mapType($resolved);
         $result->nullable = $nullable ?: null;
         $this->applyNativeTypeMapping($result);
 
         return $result;
+    }
+
+    /**
+     * Overlay alias markers onto a TypeContext so that usages of the class'
+     * registered PHPStan/Psalm type aliases resolve to marker object types.
+     *
+     * Only aliases whose marker is present in <code>$liveMarkers</code> are seeded, so
+     * alias usages expand inline until the matching component has been registered.
+     * Markers win over any inline alias definitions collected by the factory.
+     *
+     * @param array<string, mixed> $liveMarkers
+     */
+    public function createAliasMarkerContext(\ReflectionClass $class, ?TypeContext $base = null, array $liveMarkers = []): ?TypeContext
+    {
+        $base ??= $this->createTypeContext($class);
+        if (!$base instanceof TypeContext) {
+            return null;
+        }
+
+        $markers = [];
+        foreach ($this->typeAliases->forClass($class) as $local => $info) {
+            if ($info['templated'] || $info['type'] === null) {
+                continue;
+            }
+            $marker = TypeAliases::marker($info['owner'], $info['alias']);
+            if (!array_key_exists($marker, $liveMarkers)) {
+                continue;
+            }
+            $markers[$local] = Type::object($marker);
+        }
+
+        if ([] === $markers) {
+            return $base;
+        }
+
+        return new TypeContext(
+            $base->calledClassName,
+            $base->declaringClassName,
+            $base->namespace,
+            $base->uses,
+            $base->templates,
+            $markers + $base->typeAliases,
+        );
+    }
+
+    protected function declaringClass(\Reflector $reflector): ?\ReflectionClass
+    {
+        return match (true) {
+            $reflector instanceof \ReflectionClass => $reflector,
+            $reflector instanceof \ReflectionProperty,
+            $reflector instanceof \ReflectionMethod,
+            $reflector instanceof \ReflectionClassConstant => $reflector->getDeclaringClass(),
+            $reflector instanceof \ReflectionParameter => $reflector->getDeclaringFunction() instanceof \ReflectionMethod
+                ? $reflector->getDeclaringFunction()->getDeclaringClass()
+                : null,
+            default => null,
+        };
     }
 
     /**
@@ -384,7 +452,10 @@ class TypeResolver
         }
     }
 
-    public function getDocblockType(\Reflector $reflector): ?Type
+    /**
+     * @param array<string, mixed> $liveMarkers registered alias markers (see TypeAliases)
+     */
+    public function getDocblockType(\Reflector $reflector, array $liveMarkers = []): ?Type
     {
         $docComment = match (true) {
             $reflector instanceof \ReflectionProperty => $reflector->isPromoted()
@@ -401,6 +472,9 @@ class TypeResolver
         }
 
         $typeContext = $this->createTypeContext($reflector);
+        if ([] !== $liveMarkers && ($class = $this->declaringClass($reflector)) instanceof \ReflectionClass) {
+            $typeContext = $this->createAliasMarkerContext($class, $typeContext, $liveMarkers);
+        }
 
         $tagName = match (true) {
             $reflector instanceof \ReflectionProperty => $reflector->isPromoted()
