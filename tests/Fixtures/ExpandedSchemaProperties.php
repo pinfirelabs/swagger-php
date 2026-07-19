@@ -9,7 +9,7 @@ namespace OpenApi\Tests\Fixtures;
 use OpenApi\Attributes as OAT;
 
 /**
- * @property int $id Internal user identifier
+ * @property int         $id   Internal user identifier
  * @property string|null $name Display name
  * @property-read bool $active Whether the user is active
  * @property-read ExpandedSchemaProperties[] $children Child users
@@ -41,6 +41,70 @@ class ExpandedSchemaProperties
 }
 
 /**
+ * @property int         $id   Account id
+ * @property string|null $name Display name
+ * @property-write string $secret Setter-only secret
+ */
+#[OAT\Schema(schema: 'WritableAccount', pick: ['id', 'secret'])]
+#[OAT\Schema(
+    schema: 'WritableAccountRenamed',
+    pick: ['id', 'name'],
+    required: ['id', 'name'],
+    rename: ['name' => 'displayName'],
+)]
+#[OAT\Schema(schema: 'PlainWritableAccount')]
+class WritableAccount
+{
+}
+
+/**
+ * @OA\Schema(
+ *     schema="DocblockWritableAccount",
+ *     pick={"id", "secret"}
+ * )
+ * @OA\Schema(
+ *     schema="DocblockWritableAccountRenamed",
+ *     pick={"id", "name"},
+ *     required={"id", "name"},
+ *     rename={"name": "displayName"}
+ * )
+ *
+ * @property int         $id   Account id
+ * @property string|null $name Display name
+ * @property-write string $secret Setter-only secret
+ */
+class DocblockWritableAccount
+{
+}
+
+/**
+ * @property int    $code  Numeric code
+ * @property string $label Label text
+ */
+#[OAT\Schema(schema: 'PinBase', pick: ['code'])]
+#[OAT\Schema(schema: 'PinComposed', base: 'PinBase', pick: ['label'])]
+#[OAT\Schema(schema: 'PinFlattened', base: 'PinComposed', omit: ['code'])]
+class PinnedSchemaProjection
+{
+}
+
+#[OAT\Schema(
+    schema: 'BaseWithExplicitFlag',
+    properties: [
+        new OAT\Property(property: 'flag', type: 'boolean'),
+        new OAT\Property(property: 'label', type: 'string'),
+    ],
+)]
+#[OAT\Schema(
+    schema: 'DerivedOmitsExplicitFlag',
+    base: 'BaseWithExplicitFlag',
+    omit: ['flag'],
+)]
+class ExplicitPropertyOmission
+{
+}
+
+/**
  * @OA\Schema(
  *     schema="DocblockVirtualUser",
  *     canonical=true,
@@ -58,7 +122,7 @@ class ExpandedSchemaProperties
  *     omit={"name"}
  * )
  *
- * @property int $id Internal user identifier
+ * @property int         $id   Internal user identifier
  * @property string|null $name Display name
  * @property-read bool $active Whether the user is active
  * @property-read DocblockExpandedSchemaProperties[] $children Child users
@@ -67,7 +131,9 @@ class DocblockExpandedSchemaProperties
 {
 }
 
-/** @property string $message */
+/**
+ * @property string $message
+ */
 #[OAT\Schema(schema: 'ExpandedProblem', canonical: true, pick: ['message'])]
 class ExpandedProblem
 {

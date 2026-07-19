@@ -6,7 +6,9 @@
 
 namespace OpenApi\Tests\Processors;
 
+use OpenApi\Analysis;
 use OpenApi\Annotations as OA;
+use OpenApi\Generator;
 use OpenApi\Processors\AugmentProperties;
 use OpenApi\Processors\AugmentRefs;
 use OpenApi\Processors\AugmentSchemas;
@@ -15,6 +17,7 @@ use OpenApi\Processors\MergeIntoComponents;
 use OpenApi\Processors\MergeIntoOpenApi;
 use OpenApi\Tests\OpenApiTestCase;
 use OpenApi\Undefined;
+use OpenApi\Utils\Pipeline;
 
 final class ExpandSchemaPropertiesTest extends OpenApiTestCase
 {
@@ -74,7 +77,151 @@ final class ExpandSchemaPropertiesTest extends OpenApiTestCase
         $this->assertSame('#/components/schemas/DocblockVirtualUser', $children->items->ref);
     }
 
-    private function schema($analysis, string $name): OA\Schema
+    public function testPropertyWriteTagSetsWriteOnlyAndDescription(): void
+    {
+        $analysis = $this->analysisFromFixtures(['ExpandedSchemaProperties.php'], $this->processorPipeline($this->defaultPipeline()));
+
+        $writable = $this->schema($analysis, 'WritableAccount');
+        $this->assertSame(['id', 'secret'], array_map(static fn (OA\Property $property): string => $property->property, $writable->properties));
+        $secret = $writable->properties[1];
+        $this->assertSame('Setter-only secret', $secret->description);
+        $this->assertTrue($secret->writeOnly);
+        $this->assertSame(Undefined::UNDEFINED, $secret->readOnly);
+
+        // @property-write via docblock annotations behaves identically.
+        $docblockWritable = $this->schema($analysis, 'DocblockWritableAccount');
+        $docblockSecret = $docblockWritable->properties[1];
+        $this->assertSame('secret', $docblockSecret->property);
+        $this->assertSame('Setter-only secret', $docblockSecret->description);
+        $this->assertTrue($docblockSecret->writeOnly);
+    }
+
+    public function testOmitRemovesInheritedExplicitProperty(): void
+    {
+        $analysis = $this->analysisFromFixtures(['ExpandedSchemaProperties.php'], $this->processorPipeline($this->defaultPipeline()));
+
+        $base = $this->schema($analysis, 'BaseWithExplicitFlag');
+        $this->assertSame(['flag', 'label'], array_map(static fn (OA\Property $property): string => $property->property, $base->properties));
+
+        $derived = $this->schema($analysis, 'DerivedOmitsExplicitFlag');
+        $this->assertSame(Undefined::UNDEFINED, $derived->allOf, 'omit forces flattening even though only one property is left');
+        $this->assertSame(['label'], array_map(static fn (OA\Property $property): string => $property->property, $derived->properties));
+    }
+
+    public function testRenamePickedPropertyAndRequiredList(): void
+    {
+        $analysis = $this->analysisFromFixtures(['ExpandedSchemaProperties.php'], $this->processorPipeline($this->defaultPipeline()));
+
+        foreach (['WritableAccountRenamed', 'DocblockWritableAccountRenamed'] as $name) {
+            $renamed = $this->schema($analysis, $name);
+            $this->assertSame(['id', 'displayName'], array_map(static fn (OA\Property $property): string => $property->property, $renamed->properties), $name);
+            $this->assertSame(['id', 'displayName'], $renamed->required, $name . ': required list is renamed along with the property');
+            $this->assertSame('Display name', $renamed->properties[1]->description, $name);
+        }
+    }
+
+    public function testBaseCompositionOutputStrategyIsStableAcrossVersions(): void
+    {
+        foreach ([OA\OpenApi::VERSION_3_0_0, OA\OpenApi::VERSION_3_1_0] as $version) {
+            $analysis = $this->analysisAtVersion(['ExpandedSchemaProperties.php'], $version);
+
+            $composed = $this->toArray($this->schema($analysis, 'PinComposed'));
+            $this->assertSame([
+                'schema' => 'PinComposed',
+                'allOf' => [
+                    ['$ref' => '#/components/schemas/PinBase'],
+                    [
+                        'properties' => [
+                            'label' => ['description' => 'Label text', 'type' => 'string'],
+                        ],
+                        'type' => 'object',
+                    ],
+                ],
+            ], $composed, 'base + pick-only allOf shape for ' . $version);
+
+            $flattened = $this->toArray($this->schema($analysis, 'PinFlattened'));
+            $this->assertSame([
+                'schema' => 'PinFlattened',
+                'properties' => [
+                    'label' => ['description' => 'Label text', 'type' => 'string'],
+                ],
+            ], $flattened, 'base + omit flattened shape for ' . $version);
+        }
+    }
+
+    public function testPickingUnknownPropertyLogsWarningAndOmitsIt(): void
+    {
+        // ExpandedSchemaPropertiesDocblock.php also carries the base-cycle
+        // fixture (see testBaseCycleLogsErrorAndDoesNotRecurseInfinitely);
+        // both classes are scanned together whenever the file is loaded, so
+        // both log lines fire regardless of which schema this test cares
+        // about.
+        $this->assertOpenApiLogEntryContains('picks unknown property "doesNotExist"');
+        $this->assertOpenApiLogEntryContains('Schema projection base cycle detected for');
+
+        $analysis = $this->analysisFromFixtures(['ExpandedSchemaPropertiesDocblock.php'], $this->processorPipeline($this->defaultPipeline()));
+
+        $schema = $this->schema($analysis, 'DocblockUnknownPickUser');
+        $this->assertSame(['id'], array_map(static fn (OA\Property $property): string => $property->property, $schema->properties));
+    }
+
+    public function testBaseCycleLogsErrorAndDoesNotRecurseInfinitely(): void
+    {
+        // See the comment in testPickingUnknownPropertyLogsWarningAndOmitsIt:
+        // both fixtures in this file are scanned together.
+        $this->assertOpenApiLogEntryContains('picks unknown property "doesNotExist"');
+        $this->assertOpenApiLogEntryContains('Schema projection base cycle detected for');
+
+        $analysis = $this->analysisFromFixtures(['ExpandedSchemaPropertiesDocblock.php'], $this->processorPipeline($this->defaultPipeline()));
+
+        $cycleA = $this->schema($analysis, 'CycleA');
+        $cycleB = $this->schema($analysis, 'CycleB');
+        $this->assertSame('#/components/schemas/CycleB', $cycleA->allOf[0]->ref);
+        $this->assertSame('#/components/schemas/CycleA', $cycleB->allOf[0]->ref);
+    }
+
+    public function testSchemaWithoutProjectionFieldsDoesNotImportPropertyTags(): void
+    {
+        $analysis = $this->analysisFromFixtures(['ExpandedSchemaProperties.php'], $this->processorPipeline($this->defaultPipeline()));
+
+        $plain = $this->schema($analysis, 'PlainWritableAccount');
+        $this->assertSame(Undefined::UNDEFINED, $plain->properties, 'bare @OA\Schema on a class with @property tags imports nothing');
+    }
+
+    /**
+     * @return array<int,object>
+     */
+    private function defaultPipeline(): array
+    {
+        return [
+            new MergeIntoOpenApi(),
+            new MergeIntoComponents(),
+            new AugmentSchemas(),
+            new ExpandSchemaProperties(),
+            new AugmentProperties(),
+            new AugmentRefs(),
+        ];
+    }
+
+    private function analysisAtVersion(array $files, string $version): Analysis
+    {
+        $analysis = new Analysis([], $this->getContext());
+        (new Generator($this->getTrackingLogger()))
+            ->setVersion($version)
+            ->setAnalyser($this->getAnalyzer())
+            ->setTypeResolver($this->getTypeResolver())
+            ->setProcessorPipeline(new Pipeline($this->defaultPipeline()))
+            ->generate($this->fixtures($files), $analysis, false);
+
+        return $analysis;
+    }
+
+    private function toArray(OA\Schema $schema): array
+    {
+        return json_decode(json_encode($schema), true);
+    }
+
+    private function schema(Analysis $analysis, string $name): OA\Schema
     {
         $schema = $analysis->getSchemaByName($name);
         $this->assertInstanceOf(OA\Schema::class, $schema);
