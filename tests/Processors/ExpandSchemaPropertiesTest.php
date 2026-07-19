@@ -189,6 +189,16 @@ final class ExpandSchemaPropertiesTest extends OpenApiTestCase
         $this->assertSame(Undefined::UNDEFINED, $plain->properties, 'bare @OA\Schema on a class with @property tags imports nothing');
     }
 
+    public function testExplicitRequiredEntriesSurvivePickWithoutMatchingProperty(): void
+    {
+        $analysis = $this->analysisFromFixtures(['ExpandedSchemaProperties.php'], $this->processorPipeline($this->defaultPipeline()));
+
+        $schema = $this->schema($analysis, 'PhantomRequired');
+        $this->assertSame(['id', 'label'], array_map(static fn (OA\Property $property): string => $property->property, $schema->properties));
+        // JSON Schema allows requiring keys the schema does not describe
+        $this->assertSame(['id', 'phantom_column'], $schema->required);
+    }
+
     public function testExpandsSchemasNestedUnderComponents(): void
     {
         $analysis = $this->analysisFromFixtures(['ExpandedSchemaPropertiesComponents.php'], $this->processorPipeline([

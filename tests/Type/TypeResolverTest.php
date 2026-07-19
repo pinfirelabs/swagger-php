@@ -224,6 +224,7 @@ final class TypeResolverTest extends OpenApiTestCase
             'plain' => '',
             'described' => 'Same-line description',
             'wrapped' => "Wrapped description\n                            that continues on the next line",
+            'trailing' => '',
             'computed' => '',
         ], $properties);
     }

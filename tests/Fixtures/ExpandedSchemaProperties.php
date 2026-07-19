@@ -154,3 +154,12 @@ class ResponseShorthandFixture
     {
     }
 }
+
+/**
+ * @property int    $id
+ * @property string $label
+ */
+#[OAT\Schema(schema: 'PhantomRequired', pick: ['id', 'label'], required: ['id', 'phantom_column'])]
+class PhantomRequired
+{
+}

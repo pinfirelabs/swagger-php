@@ -13,6 +13,7 @@ namespace OpenApi\Tests\Fixtures\PHP;
  * @property string $described Same-line description
  * @property string $wrapped   Wrapped description
  *                             that continues on the next line
+ * @property int    $trailing
  *
  * The followings are the available model relations:
  * @property-read string $computed

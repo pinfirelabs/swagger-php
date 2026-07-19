@@ -121,7 +121,7 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
         }
 
         $required = array_values(array_unique(array_merge($baseExpanded['required'], $local['required'])));
-        $required = array_values(array_filter($required, static fn (string $name): bool => isset($properties[$name])));
+        $required = array_values(array_filter($required, static fn (string $name): bool => !in_array($name, $omit, true)));
 
         if ($base instanceof OA\Schema && $omit === []) {
             $this->compose($analysis, $schema, $base, $local);
@@ -193,10 +193,13 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
             $analysis->addAnnotation($property, $property->_context);
         }
 
+        // explicit required entries pass through even without a matching property
+        // (JSON Schema allows requiring keys the schema does not describe); only
+        // omitted names drop out
         $required = [];
-        foreach ((array) $schema->required as $name) {
+        foreach (Undefined::isDefault($schema->required) ? [] : (array) $schema->required as $name) {
             $outputName = $rename[$name] ?? $name;
-            if (isset($properties[$outputName])) {
+            if (!in_array($name, $omit, true) && !in_array($outputName, $omit, true)) {
                 $required[] = $outputName;
             }
         }
