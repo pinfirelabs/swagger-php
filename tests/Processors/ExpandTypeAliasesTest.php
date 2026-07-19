@@ -181,6 +181,25 @@ final class ExpandTypeAliasesTest extends OpenApiTestCase
     }
 
     #[DataProvider('versions')]
+    public function testPickPoolTraversableClassTypedProperties(string $version): void
+    {
+        // Active-record style classes implement Traversable/ArrayAccess, which TypeInfo
+        // coerces into collections; they must still resolve to $refs when used without
+        // explicit value generics, while real generics keep collection semantics.
+        $schemas = $this->schemas(
+            ['PHP/TypeAliases/IterableMagic.php'],
+            new TypeInfoTypeResolver(),
+            $version,
+        );
+        $properties = $schemas['IterableMagic']['properties'];
+
+        $this->assertEquals(['type' => 'array', 'items' => ['$ref' => self::REF . 'IterableItem']], $properties['list']);
+        $this->assertEquals(['$ref' => self::REF . 'IterableItem'], $properties['one']);
+        $this->assertEquals($this->nullableRef('IterableItem', $version), $properties['maybe']);
+        $this->assertEquals(['type' => 'object', 'additionalProperties' => ['$ref' => self::REF . 'IterableItem']], $properties['generic']);
+    }
+
+    #[DataProvider('versions')]
     public function testPickPoolClassTypedPropertiesWithoutAliases(string $version): void
     {
         // The RecHub case: class-typed @property tags on a class that declares no

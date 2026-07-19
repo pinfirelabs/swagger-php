@@ -256,6 +256,11 @@ class TypeResolver
         return $properties;
     }
 
+    protected function isMixedType(Type $type): bool
+    {
+        return $type instanceof BuiltinType && 'mixed' === (string) $type;
+    }
+
     protected function mapType(Type $type): SchemaType
     {
         if ($type instanceof CompositeTypeInterface) {
@@ -287,6 +292,14 @@ class TypeResolver
         }
 
         if ($type instanceof CollectionType) {
+            // TypeInfo coerces Traversable/ArrayAccess implementors (e.g. active-record
+            // models) into collections; without explicit value generics the class itself
+            // is the schema subject, not a container.
+            $wrapped = $type->getWrappedType();
+            if ($wrapped instanceof ObjectType && $this->isMixedType($type->getCollectionValueType())) {
+                return new SchemaType(type: $wrapped->getClassName());
+            }
+
             return $this->mapCollectionType($type);
         }
 
