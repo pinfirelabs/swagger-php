@@ -95,7 +95,9 @@ return (new PhpCsFixer\Config())
         'phpdoc_scalar' => true,
         'phpdoc_no_useless_inheritdoc' => true,
         'phpdoc_no_empty_return' => true,
-        'phpdoc_no_alias_tag' => true,
+        // default map would rewrite @property-read/@property-write to @property,
+        // destroying the readOnly/writeOnly semantics used by ExpandSchemaProperties
+        'phpdoc_no_alias_tag' => ['replacements' => ['type' => 'var', 'link' => 'see']],
         'phpdoc_param_order' => true,
         'multiline_comment_opening_closing' => true,
         'phpdoc_line_span' => ['class' => 'multi', 'method' => 'multi', 'property' => null, 'const' => null, 'case' => null, 'function' => null],
