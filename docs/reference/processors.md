@@ -108,6 +108,40 @@ Use the Schema context to extract useful information and inject that into the an
 
 Merges properties.
 
+### [ExpandTypeAliases](https://github.com/zircote/swagger-php/tree/master/src/Processors/ExpandTypeAliases.php)
+Promote <code>@phpstan-type</code>/<code>@psalm-type</code> aliases to named schema components.
+
+Runs between <code>AugmentSchemas</code> and <code>ExpandSchemaProperties</code> so that alias
+usages in <code>@var</code>/<code>@param</code>/<code>@return</code>/<code>@property</code> and in other
+aliases resolve to <code>$ref</code>s to the promoted component.
+
+#### Config settings
+**expandTypeAliases.generator**
+: <span style="font-family: monospace;">OpenApi\Generator</span>
+<br>**default**
+: <span style="font-family: monospace;">N/A</span>
+
+&nbsp;&nbsp;&nbsp;&nbsp;No details available.<br>
+
+### [ExpandSchemaProperties](https://github.com/zircote/swagger-php/tree/master/src/Processors/ExpandSchemaProperties.php)
+Expand source-level Schema base/pick/omit/rename metadata into ordinary
+OpenAPI properties and composition annotations.
+
+#### Config settings
+**expandSchemaProperties.generator**
+: <span style="font-family: monospace;">OpenApi\Generator</span>
+<br>**default**
+: <span style="font-family: monospace;">N/A</span>
+
+&nbsp;&nbsp;&nbsp;&nbsp;No details available.<br>
+
+### [ApplyOperationDefaults](https://github.com/zircote/swagger-php/tree/master/src/Processors/ApplyOperationDefaults.php)
+Apply class-level source defaults without adding anything to the OpenAPI output.
+
+### [NormalizeOperationShorthand](https://github.com/zircote/swagger-php/tree/master/src/Processors/NormalizeOperationShorthand.php)
+Expand source-only JSON body and status-keyed response shorthand before the
+normal OpenAPI processors run.
+
 ### [AugmentRequestBody](https://github.com/zircote/swagger-php/tree/master/src/Processors/AugmentRequestBody.php)
 Use the RequestBody context to extract useful information and inject that into the annotation.
 
@@ -230,3 +264,11 @@ Ensures that all tags used on operations also exist in the global <code>tags</co
 : <span style="font-family: monospace;">true</span>
 
 &nbsp;&nbsp;&nbsp;&nbsp;Enables/disables generation of default tag descriptions.<br>
+
+### [AugmentOperations](https://github.com/zircote/swagger-php/tree/master/src/Processors/AugmentOperations.php)
+Use the operation context to extract useful information and inject that into the annotation.
+
+### [ImportTraits](https://github.com/zircote/swagger-php/tree/master/src/Processors/ImportTraits.php)
+
+### [InheritProperties](https://github.com/zircote/swagger-php/tree/master/src/Processors/InheritProperties.php)
+Copy the annotated properties from parent classes;

@@ -2,8 +2,32 @@
 
 ## Status
 
-This document proposes source-level shorthand for swagger-php. None of the new
-arguments or helper annotations described here are implemented yet.
+This document originally proposed source-level shorthand for swagger-php. Most of it has since shipped; the sections
+below are kept as a design record, and some behavior has diverged slightly from what's shown here.
+
+Implemented:
+
+- Schema projections - `pick`, `omit`, `base` (as `allOf` when additive, materialized/flattened when anything is
+  omitted), `rename`, `canonical`, and per-schema `refs` - see the [Augmentation guide](docs/guide/augmentation.md#schema-projections)
+  and the `ExpandSchemaProperties` processor.
+- PHPStan/Psalm type aliases - `@phpstan-type`/`@psalm-type` auto-promotion to named components, usage-site `$ref`s,
+  `@phpstan-import-type`/`@psalm-import-type` (including `as` renames), and `typeAlias` binding - see the
+  [Augmentation guide](docs/guide/augmentation.md#phpstan-type-aliases) and the `ExpandTypeAliases` processor. Templated
+  aliases (referencing a `@template` parameter) are explicitly out of scope and are not promoted.
+- Operation shorthand - `body`, status-keyed `responses` maps, `OA\OneOf`/`OA\AnyOf`, and the explicit `schema`/
+  `oneOf`/`anyOf` shortcuts on `OA\Response` - see the `NormalizeOperationShorthand` processor.
+- `OA\OperationDefaults` - fills `tags`, `parameters`, and `security` when unset on an operation, and prefixes an
+  already-generated `operationId` with `operationIdPrefix` - see the `ApplyOperationDefaults` processor.
+
+Still proposal-only:
+
+- Framework-neutral inference of a path parameter's name/type from `{id}` in the path plus a typed PHP method
+  parameter, and inference of parameter nullability/collection type from reflection or PHPDoc without an explicit
+  `OA\Parameter`.
+- Constructing `operationId` from an explicit prefix, action method, and HTTP method. Today's `OperationId` processor
+  hashes (or, with `hash: false`, concatenates) the HTTP method, path, and class/method by default; `operationIdPrefix`
+  only prefixes whatever id that process already produced.
+- Framework route discovery, as noted below.
 
 The proposal has three goals:
 
