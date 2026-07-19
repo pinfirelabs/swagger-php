@@ -36,6 +36,7 @@ class Serializer
         OA\MediaType::class,
         OA\OpenApi::class,
         OA\Operation::class,
+        OA\OperationDefaults::class,
         OA\Options::class,
         OA\Parameter::class,
         OA\PathParameter::class,

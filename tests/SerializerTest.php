@@ -209,9 +209,18 @@ JSON;
         }
     }
 
+    // Source-only shorthand annotations (expand to Schema::oneOf/anyOf via
+    // NormalizeOperationShorthand) never survive to an OpenAPI JSON document, so there is
+    // nothing to deserialize into them and they are intentionally absent from the registry.
+    private const SOURCE_ONLY_SHORTHAND = [OA\OneOf::class, OA\AnyOf::class];
+
     #[DataProvider('allAnnotationClasses')]
     public function testValidAnnotationsListComplete(string $annotation): void
     {
+        if (in_array($annotation, self::SOURCE_ONLY_SHORTHAND, true)) {
+            return;
+        }
+
         $staticProperties = (new \ReflectionClass((Serializer::class)))->getStaticProperties();
         $this->assertArrayHasKey($annotation, array_flip($staticProperties['VALID_ANNOTATIONS']));
     }

@@ -18,6 +18,12 @@ final class AttributesSyncTest extends OpenApiTestCase
 
     public static $PARAMETER_EXCLUSIONS = ['matrix', 'label', 'form', 'simple'];
 
+    // Source-only shorthand annotations (expand to Schema::oneOf/anyOf via
+    // NormalizeOperationShorthand and never survive to serialization). Their attribute
+    // constructors are `...$types` variadics, and PHP forbids a parameter after a
+    // variadic one, so they cannot carry an `x` parameter like their siblings.
+    private const SOURCE_ONLY_SHORTHAND = [OA\OneOf::class, OA\AnyOf::class];
+
     public function testCounts(): void
     {
         $this->assertSameSize($this->allAnnotationClasses(), $this->allAttributeClasses());
@@ -26,6 +32,10 @@ final class AttributesSyncTest extends OpenApiTestCase
     #[DataProvider('allAnnotationClasses')]
     public function testParameterCompleteness(string $annotation): void
     {
+        if (in_array($annotation, self::SOURCE_ONLY_SHORTHAND, true)) {
+            return;
+        }
+
         $annotationRC = new \ReflectionClass($annotation);
         $attributeRC = new \ReflectionClass('OpenApi\\Attributes\\' . $annotationRC->getShortName());
         $attributeCtor = $attributeRC->getMethod('__construct');
