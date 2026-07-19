@@ -59,7 +59,7 @@ class ExpandTypeAliases implements GeneratorAwareInterface
             $usedNames[$name] = true;
             $shell = new OA\Schema([
                 'schema' => $name,
-                '_context' => new Context(['generated' => true], $info['context']),
+                '_context' => new Context(['generated' => true, 'comment' => null], $info['context']),
             ]);
             $analysis->typeAliasSchemas[$marker] = $shell;
             $analysis->addAnnotation($shell, $shell->_context);

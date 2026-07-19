@@ -7,6 +7,10 @@
 namespace OpenApi\Tests\Fixtures\PHP\TypeAliases;
 
 /**
+ * This is the model class for table "member_like".
+ *
+ * Second prose paragraph, like real Yii models.
+ *
  * @phpstan-type AddressShape array{line1: string, line2?: string}
  *
  * @property int          $id        Member id

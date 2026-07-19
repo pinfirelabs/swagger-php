@@ -144,7 +144,7 @@ class TypeInfoTypeResolver extends AbstractTypeResolver
         if ($schemaType->items instanceof SchemaType) {
             $schema->type = 'array';
             if (Undefined::isDefault($schema->items)) {
-                $schema->items = new OA\Items(['_context' => new Context(['generated' => true], $schema->_context)]);
+                $schema->items = new OA\Items(['_context' => new Context(['generated' => true, 'comment' => null], $schema->_context)]);
                 $this->applyToAnnotation($schema->items, $schemaType->items, $analysis, $sourceClass);
                 $this->type2ref($schema->items, $analysis, $sourceClass);
                 $analysis->addAnnotation($schema->items, $schema->items->_context);
@@ -158,7 +158,7 @@ class TypeInfoTypeResolver extends AbstractTypeResolver
         if ($schemaType->additionalProperties instanceof SchemaType) {
             $schema->type = 'object';
             if (Undefined::isDefault($schema->additionalProperties)) {
-                $schema->additionalProperties = new OA\AdditionalProperties(['_context' => new Context(['generated' => true], $schema->_context)]);
+                $schema->additionalProperties = new OA\AdditionalProperties(['_context' => new Context(['generated' => true, 'comment' => null], $schema->_context)]);
                 $this->applyToAnnotation($schema->additionalProperties, $schemaType->additionalProperties, $analysis, $sourceClass);
                 $this->type2ref($schema->additionalProperties, $analysis, $sourceClass);
                 $analysis->addAnnotation($schema->additionalProperties, $schema->additionalProperties->_context);
@@ -169,7 +169,7 @@ class TypeInfoTypeResolver extends AbstractTypeResolver
             $this->mapNativeType($schema->additionalProperties, $schema->additionalProperties->type);
         } elseif ($schemaType->additionalProperties === true) {
             if (Undefined::isDefault($schema->additionalProperties)) {
-                $schema->additionalProperties = new OA\AdditionalProperties(['_context' => new Context(['generated' => true], $schema->_context)]);
+                $schema->additionalProperties = new OA\AdditionalProperties(['_context' => new Context(['generated' => true, 'comment' => null], $schema->_context)]);
                 $analysis->addAnnotation($schema->additionalProperties, $schema->additionalProperties->_context);
             }
         }
@@ -181,7 +181,7 @@ class TypeInfoTypeResolver extends AbstractTypeResolver
             $schema->type = Undefined::UNDEFINED;
             $schema->oneOf = [];
             foreach ($schemaType->oneOf as $childType) {
-                $childSchema = new OA\Schema(['_context' => new Context(['generated' => true], $schema->_context)]);
+                $childSchema = new OA\Schema(['_context' => new Context(['generated' => true, 'comment' => null], $schema->_context)]);
                 $this->applyToAnnotation($childSchema, $childType, $analysis, $sourceClass);
                 $this->type2ref($childSchema, $analysis, $sourceClass);
                 $analysis->addAnnotation($childSchema, $childSchema->_context);
@@ -193,7 +193,7 @@ class TypeInfoTypeResolver extends AbstractTypeResolver
             $schema->type = Undefined::UNDEFINED;
             $schema->allOf = [];
             foreach ($schemaType->allOf as $childType) {
-                $childSchema = new OA\Schema(['_context' => new Context(['generated' => true], $schema->_context)]);
+                $childSchema = new OA\Schema(['_context' => new Context(['generated' => true, 'comment' => null], $schema->_context)]);
                 $this->applyToAnnotation($childSchema, $childType, $analysis, $sourceClass);
                 $this->type2ref($childSchema, $analysis, $sourceClass);
                 $analysis->addAnnotation($childSchema, $childSchema->_context);
@@ -207,7 +207,7 @@ class TypeInfoTypeResolver extends AbstractTypeResolver
             foreach ($schemaType->properties as $name => $propType) {
                 $property = new OA\Property([
                     'property' => $name,
-                    '_context' => new Context(['generated' => true], $schema->_context),
+                    '_context' => new Context(['generated' => true, 'comment' => null], $schema->_context),
                 ]);
                 $this->applyToAnnotation($property, $propType, $analysis, $sourceClass);
                 $this->type2ref($property, $analysis, $sourceClass);
