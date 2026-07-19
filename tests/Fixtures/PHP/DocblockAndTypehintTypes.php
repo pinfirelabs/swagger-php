@@ -8,6 +8,9 @@ namespace OpenApi\Tests\Fixtures\PHP;
 
 use OpenApi\Attributes as OAT;
 
+/**
+ * @phpstan-type DocAlias array{name: string, count?: int}
+ */
 #[OAT\Schema()]
 class DocblockAndTypehintTypes
 {
@@ -307,4 +310,22 @@ class DocblockAndTypehintTypes
         new OAT\Schema(type: 'string'),
     ]))]
     public array $nestedOneOfWithItems;
+
+    /**
+     * @var DocAlias
+     */
+    #[OAT\Property]
+    public array $aliasShape;
+
+    /**
+     * @var DocAlias[]
+     */
+    #[OAT\Property]
+    public array $aliasShapeList;
+
+    /**
+     * @var DocAlias|null
+     */
+    #[OAT\Property]
+    public ?array $nullableAliasShape;
 }

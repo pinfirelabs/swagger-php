@@ -20,6 +20,7 @@ use PHPStan\PhpDocParser\ParserConfig;
 use Radebatz\TypeInfoExtras\Type\ExplicitType;
 use Radebatz\TypeInfoExtras\Type\IntRangeType;
 use Radebatz\TypeInfoExtras\TypeResolver\StringTypeResolver;
+use Symfony\Component\TypeInfo\Exception\ExceptionInterface;
 use Symfony\Component\TypeInfo\Exception\UnsupportedException;
 use Symfony\Component\TypeInfo\Type;
 use Symfony\Component\TypeInfo\Type\ArrayShapeType;
@@ -30,6 +31,7 @@ use Symfony\Component\TypeInfo\Type\IntersectionType;
 use Symfony\Component\TypeInfo\Type\NullableType;
 use Symfony\Component\TypeInfo\Type\ObjectType;
 use Symfony\Component\TypeInfo\Type\UnionType;
+use Symfony\Component\TypeInfo\TypeContext\TypeContext;
 use Symfony\Component\TypeInfo\TypeContext\TypeContextFactory;
 use Symfony\Component\TypeInfo\TypeResolver\ReflectionTypeResolver;
 
@@ -43,9 +45,44 @@ class TypeResolver
 {
     protected TypeMapper $typeMapper;
 
+    protected TypeContextFactory $typeContextFactory;
+
+    protected TypeContextFactory $bareTypeContextFactory;
+
+    protected StringTypeResolver $stringTypeResolver;
+
+    protected Lexer $phpDocLexer;
+
+    protected PhpDocParser $phpDocParser;
+
     public function __construct()
     {
         $this->typeMapper = new TypeMapper();
+        $this->typeContextFactory = new TypeContextFactory(new \Symfony\Component\TypeInfo\TypeResolver\StringTypeResolver());
+        $this->bareTypeContextFactory = new TypeContextFactory();
+        $this->stringTypeResolver = new StringTypeResolver();
+
+        $config = new ParserConfig([]);
+        $constExprParser = new ConstExprParser($config);
+        $this->phpDocLexer = new Lexer($config);
+        $this->phpDocParser = new PhpDocParser(
+            $config,
+            new TypeParser($config, $constExprParser),
+            $constExprParser,
+        );
+    }
+
+    /**
+     * Create a type-alias-aware TypeContext for the given reflector, falling back to a
+     * plain context (no @phpstan-type/@psalm-type alias collection) if alias resolution fails.
+     */
+    protected function createTypeContext(\Reflector $reflector): ?TypeContext
+    {
+        try {
+            return $this->typeContextFactory->createFromReflection($reflector);
+        } catch (ExceptionInterface) {
+            return $this->bareTypeContextFactory->createFromReflection($reflector);
+        }
     }
 
     /**
@@ -339,7 +376,7 @@ class TypeResolver
             );
 
         try {
-            $typeContext = (new TypeContextFactory())->createFromReflection($reflector);
+            $typeContext = $this->createTypeContext($reflector);
 
             return (new ReflectionTypeResolver())->resolve($subject, $typeContext);
         } catch (UnsupportedException) {
@@ -363,7 +400,7 @@ class TypeResolver
             return null;
         }
 
-        $typeContext = (new TypeContextFactory())->createFromReflection($reflector);
+        $typeContext = $this->createTypeContext($reflector);
 
         $tagName = match (true) {
             $reflector instanceof \ReflectionProperty => $reflector->isPromoted()
@@ -378,17 +415,8 @@ class TypeResolver
             return null;
         }
 
-        $lexer = new Lexer(new ParserConfig([]));
-        $config = new ParserConfig([]);
-        $constExprParser = new ConstExprParser($config);
-        $phpDocParser = new PhpDocParser(
-            $config,
-            new TypeParser($config, $constExprParser),
-            $constExprParser,
-        );
-
-        $tokens = new TokenIterator($lexer->tokenize($docComment));
-        $docNode = $phpDocParser->parse($tokens);
+        $tokens = new TokenIterator($this->phpDocLexer->tokenize($docComment));
+        $docNode = $this->phpDocParser->parse($tokens);
 
         foreach ($docNode->getTagsByName($tagName) as $tag) {
             $tagValue = $tag->value;
@@ -399,7 +427,7 @@ class TypeResolver
                 || $tagValue instanceof ReturnTagValueNode
             ) {
                 try {
-                    return (new StringTypeResolver())->resolve((string) $tagValue, $typeContext);
+                    return $this->stringTypeResolver->resolve((string) $tagValue, $typeContext);
                 } catch (UnsupportedException) {
                     // ignore
                 }

@@ -12,8 +12,10 @@ use OpenApi\Context;
 use OpenApi\Generator;
 use OpenApi\Processors\AugmentSchemas;
 use OpenApi\Processors\MergeIntoOpenApi;
+use OpenApi\Tests\Fixtures\PHP\BrokenImport;
 use OpenApi\Tests\Fixtures\PHP\DocblockAndTypehintTypes;
 use OpenApi\Tests\OpenApiTestCase;
+use OpenApi\Type\TypeResolver;
 use OpenApi\TypeResolverInterface;
 use OpenApi\Utils\Pipeline;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -81,6 +83,12 @@ final class TypeResolverTest extends OpenApiTestCase
                 'type-info:nestedoneof' => '{ "oneOf": [ { "type": "array", "items": { "$ref": "#/components/schemas/DocblockAndTypehintTypes" } }, { "type": "array", "items": { "type": "string" } } ], "property": "nestedOneOf" }',
                 'legacy:nestedoneofwithitems' => '{ "type": "array", "items": { "oneOf": [ { "$ref": "#/components/schemas/DocblockAndTypehintTypes" }, { "type": "string" } ] }, "property": "nestedOneOfWithItems" }',
                 'type-info:nestedoneofwithitems' => '{ "type": "array", "items": { "oneOf": [ { "$ref": "#/components/schemas/DocblockAndTypehintTypes" }, { "type": "string" } ] }, "property": "nestedOneOfWithItems" }',
+                'legacy:aliasshape' => '{ "type": "array", "items": {}, "property": "aliasShape" }',
+                'type-info:aliasshape' => '{ "type": "object", "properties": { "name": { "type": "string" }, "count": { "type": "integer" } }, "required": [ "name" ], "property": "aliasShape" }',
+                'legacy:aliasshapelist' => '{ "type": "array", "items": {}, "property": "aliasShapeList" }',
+                'type-info:aliasshapelist' => '{ "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "count": { "type": "integer" } }, "required": [ "name" ] }, "property": "aliasShapeList" }',
+                'legacy:nullablealiasshape' => '{ "type": "array", "items": {}, "nullable": true, "property": "nullableAliasShape" }',
+                'type-info:nullablealiasshape' => '{ "type": "object", "properties": { "name": { "type": "string" }, "count": { "type": "integer" } }, "required": [ "name" ], "nullable": true, "property": "nullableAliasShape" }',
             ],
             OA\OpenApi::VERSION_3_1_0 => [
                 'nothing' => '{ "property": "nothing" }',
@@ -142,6 +150,12 @@ final class TypeResolverTest extends OpenApiTestCase
                 'type-info:nestedoneof' => '{ "oneOf": [ { "type": "array", "items": { "$ref": "#/components/schemas/DocblockAndTypehintTypes" } }, { "type": "array", "items": { "type": "string" } } ], "property": "nestedOneOf" }',
                 'legacy:nestedoneofwithitems' => '{ "type": "array", "items": { "oneOf": [ { "$ref": "#/components/schemas/DocblockAndTypehintTypes" }, { "type": "string" } ] }, "property": "nestedOneOfWithItems" }',
                 'type-info:nestedoneofwithitems' => '{ "type": "array", "items": { "oneOf": [ { "$ref": "#/components/schemas/DocblockAndTypehintTypes" }, { "type": "string" } ] }, "property": "nestedOneOfWithItems" }',
+                'legacy:aliasshape' => '{ "type": "array", "items": {}, "property": "aliasShape" }',
+                'type-info:aliasshape' => '{ "type": "object", "properties": { "name": { "type": "string" }, "count": { "type": "integer" } }, "required": [ "name" ], "property": "aliasShape" }',
+                'legacy:aliasshapelist' => '{ "type": "array", "items": {}, "property": "aliasShapeList" }',
+                'type-info:aliasshapelist' => '{ "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "count": { "type": "integer" } }, "required": [ "name" ] }, "property": "aliasShapeList" }',
+                'legacy:nullablealiasshape' => '{ "type": [ "array", "null" ], "items": {}, "property": "nullableAliasShape" }',
+                'type-info:nullablealiasshape' => '{ "type": [ "object", "null" ], "properties": { "name": { "type": "string" }, "count": { "type": "integer" } }, "required": [ "name" ], "property": "nullableAliasShape" }',
             ],
         ];
 
@@ -196,5 +210,14 @@ final class TypeResolverTest extends OpenApiTestCase
         $typeResolver->augmentSchemaType($analysis, $schema);
 
         $this->assertSpecEquals($schema->toJson(), $expected, $schema->toJson());
+    }
+
+    public function testBrokenImportedTypeAliasFallsBack(): void
+    {
+        $reflector = new \ReflectionProperty(BrokenImport::class, 'name');
+
+        $type = (new TypeResolver())->resolve($reflector);
+
+        $this->assertSame('string', $type?->type);
     }
 }
