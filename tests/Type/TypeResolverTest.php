@@ -14,6 +14,7 @@ use OpenApi\Processors\AugmentSchemas;
 use OpenApi\Processors\MergeIntoOpenApi;
 use OpenApi\Tests\Fixtures\PHP\BrokenImport;
 use OpenApi\Tests\Fixtures\PHP\DocblockAndTypehintTypes;
+use OpenApi\Tests\Fixtures\PHP\VirtualPropertyDescriptions;
 use OpenApi\Tests\OpenApiTestCase;
 use OpenApi\Type\TypeResolver;
 use OpenApi\TypeResolverInterface;
@@ -210,6 +211,21 @@ final class TypeResolverTest extends OpenApiTestCase
         $typeResolver->augmentSchemaType($analysis, $schema);
 
         $this->assertSpecEquals($schema->toJson(), $expected, $schema->toJson());
+    }
+
+    public function testDocblockPropertyDescriptionsEndAtParagraphBreaks(): void
+    {
+        $properties = [];
+        foreach ((new TypeResolver())->getDocblockProperties(new \ReflectionClass(VirtualPropertyDescriptions::class)) as $property) {
+            $properties[$property['name']] = $property['description'];
+        }
+
+        $this->assertSame([
+            'plain' => '',
+            'described' => 'Same-line description',
+            'wrapped' => "Wrapped description\n                            that continues on the next line",
+            'computed' => '',
+        ], $properties);
     }
 
     public function testBrokenImportedTypeAliasFallsBack(): void

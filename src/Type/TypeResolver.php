@@ -246,7 +246,9 @@ class TypeResolver
                 $properties[] = [
                     'name' => ltrim($tag->value->propertyName, '$'),
                     'type' => (string) $tag->value->type,
-                    'description' => $tag->value->description,
+                    // a paragraph break ends the description; later paragraphs are unrelated
+                    // docblock prose the parser treats as tag continuation
+                    'description' => trim(explode("\n\n", trim($tag->value->description), 2)[0]),
                     'readOnly' => $readOnly,
                     'writeOnly' => $writeOnly,
                 ];
