@@ -404,12 +404,27 @@ class Analysis
     public function getSchemaByName(string $name): ?OA\Schema
     {
         foreach ($this->getAnnotationsOfType(OA\Schema::class) as $schema) {
-            if ($schema->isRoot(OA\Schema::class) && $schema->schema === $name) {
+            if ($schema->schema === $name && self::isComponentSchema($schema)) {
                 return $schema;
             }
         }
 
         return null;
+    }
+
+    /**
+     * A named component schema: either a root schema or one nested directly under a
+     * <code>Components</code> annotation (which happens when a class carries both
+     * <code>Schema</code> and <code>Components</code> attributes).
+     */
+    public static function isComponentSchema(OA\Schema $schema): bool
+    {
+        if (!$schema->isRoot(OA\Schema::class)) {
+            return false;
+        }
+        $nested = $schema->_context->nested;
+
+        return null === $nested || $nested instanceof OA\Components;
     }
 
     /**

@@ -13,6 +13,7 @@ use OpenApi\Processors\AugmentProperties;
 use OpenApi\Processors\AugmentRefs;
 use OpenApi\Processors\AugmentSchemas;
 use OpenApi\Processors\ExpandSchemaProperties;
+use OpenApi\Processors\ExpandTypeAliases;
 use OpenApi\Processors\MergeIntoComponents;
 use OpenApi\Processors\MergeIntoOpenApi;
 use OpenApi\Tests\OpenApiTestCase;
@@ -186,6 +187,33 @@ final class ExpandSchemaPropertiesTest extends OpenApiTestCase
 
         $plain = $this->schema($analysis, 'PlainWritableAccount');
         $this->assertSame(Undefined::UNDEFINED, $plain->properties, 'bare @OA\Schema on a class with @property tags imports nothing');
+    }
+
+    public function testExpandsSchemasNestedUnderComponents(): void
+    {
+        $analysis = $this->analysisFromFixtures(['ExpandedSchemaPropertiesComponents.php'], $this->processorPipeline([
+            new MergeIntoOpenApi(),
+            new MergeIntoComponents(),
+            new AugmentSchemas(),
+            new ExpandTypeAliases(),
+            new ExpandSchemaProperties(),
+            new AugmentProperties(),
+            new AugmentRefs(),
+        ]));
+
+        $derived = $this->schema($analysis, 'ProjectionValidationError');
+        $this->assertSame(Undefined::UNDEFINED, $derived->properties);
+        $this->assertCount(2, $derived->allOf);
+        $this->assertSame('#/components/schemas/ProjectionError', $derived->allOf[0]->ref);
+        $override = $derived->allOf[1]->properties[0];
+        $this->assertSame('error', $override->property);
+        $this->assertSame(['ValidationError'], $override->enum);
+
+        $bound = $this->schema($analysis, 'ProblemDetails');
+        $this->assertSame('Problem details', $bound->description);
+        $this->assertSame('object', $bound->type);
+        $this->assertEqualsCanonicalizing(['title', 'code'], array_map(static fn (OA\Property $property): string => $property->property, $bound->properties));
+        $this->assertSame(['title'], $bound->required);
     }
 
     /**

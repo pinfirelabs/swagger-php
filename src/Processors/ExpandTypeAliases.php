@@ -87,7 +87,7 @@ class ExpandTypeAliases implements GeneratorAwareInterface
     {
         $bound = [];
         foreach ($analysis->getAnnotationsOfType(OA\Schema::class) as $schema) {
-            if (!$schema->isRoot(OA\Schema::class) || $schema->_context->is('generated') || Undefined::isDefault($schema->typeAlias)) {
+            if (!Analysis::isComponentSchema($schema) || $schema->_context->is('generated') || Undefined::isDefault($schema->typeAlias)) {
                 continue;
             }
             $class = $this->schemaClass($schema);

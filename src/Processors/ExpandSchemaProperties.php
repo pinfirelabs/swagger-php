@@ -46,7 +46,7 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
         $this->expanding = [];
 
         foreach ($analysis->getAnnotationsOfType(OA\Schema::class) as $schema) {
-            if (!$schema->isRoot(OA\Schema::class) || $schema->_context->is('nested')) {
+            if (!Analysis::isComponentSchema($schema)) {
                 continue;
             }
             if (Undefined::isDefault($schema->pick, $schema->omit, $schema->base, $schema->rename)) {
@@ -272,7 +272,7 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
         }
         $base = is_object($schema->base) ? get_class($schema->base) : (string) $schema->base;
         foreach ($analysis->getAnnotationsOfType(OA\Schema::class) as $candidate) {
-            if ($candidate !== $schema && $candidate->isRoot(OA\Schema::class) && $candidate->schema === $base) {
+            if ($candidate !== $schema && $candidate->schema === $base && Analysis::isComponentSchema($candidate)) {
                 return $candidate;
             }
         }
