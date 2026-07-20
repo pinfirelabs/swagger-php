@@ -163,3 +163,56 @@ class ResponseShorthandFixture
 class PhantomRequired
 {
 }
+
+/**
+ * @property-read int    $id        Primary key
+ * @property string $createdAt Creation timestamp
+ */
+class InheritedRecordBase
+{
+}
+
+/**
+ * @property string $name Equipment name
+ */
+#[OAT\Schema(schema: 'InheritedEquipment', pick: ['id', 'createdAt', 'name'])]
+class InheritedEquipment extends InheritedRecordBase
+{
+}
+
+/**
+ * @property-read int $value Base numeric value
+ */
+class OverrideBase
+{
+}
+
+/**
+ * @property string $value Overridden string value
+ */
+#[OAT\Schema(schema: 'OverrideChild', pick: ['value'])]
+class OverrideChild extends OverrideBase
+{
+}
+
+/**
+ * @property-read int $grandId Grandparent id
+ */
+class GrandParentRecord
+{
+}
+
+/**
+ * @property string $parentField Parent field
+ */
+class ParentRecord extends GrandParentRecord
+{
+}
+
+/**
+ * @property bool $childFlag Child flag
+ */
+#[OAT\Schema(schema: 'MultiLevelChild', pick: ['grandId', 'parentField', 'childFlag'])]
+class MultiLevelChild extends ParentRecord
+{
+}

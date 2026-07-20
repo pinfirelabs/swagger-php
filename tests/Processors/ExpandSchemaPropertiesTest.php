@@ -19,6 +19,7 @@ use OpenApi\Processors\MergeIntoOpenApi;
 use OpenApi\Tests\OpenApiTestCase;
 use OpenApi\Undefined;
 use OpenApi\Utils\Pipeline;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class ExpandSchemaPropertiesTest extends OpenApiTestCase
 {
@@ -225,6 +226,75 @@ final class ExpandSchemaPropertiesTest extends OpenApiTestCase
         $this->assertSame('object', $bound->type);
         $this->assertEqualsCanonicalizing(['title', 'code'], array_map(static fn (OA\Property $property): string => $property->property, $bound->properties));
         $this->assertSame(['title'], $bound->required);
+    }
+
+    public static function versions(): iterable
+    {
+        yield '3.0.0' => [OA\OpenApi::VERSION_3_0_0];
+        yield '3.1.0' => [OA\OpenApi::VERSION_3_1_0];
+    }
+
+    #[DataProvider('versions')]
+    public function testPicksVirtualPropertyDeclaredOnAncestorDocblock(string $version): void
+    {
+        $analysis = $this->analysisAtVersion(['ExpandedSchemaProperties.php'], $version);
+
+        $equipment = $this->schema($analysis, 'InheritedEquipment');
+        $this->assertSame(['id', 'createdAt', 'name'], array_map(static fn (OA\Property $property): string => $property->property, $equipment->properties), $version);
+
+        [$id, $createdAt, $name] = $equipment->properties;
+
+        // @property-read $id declared only on the base class docblock
+        $this->assertSame('integer', $id->type, $version);
+        $this->assertSame('Primary key', $id->description, $version);
+        $this->assertTrue($id->readOnly, $version);
+
+        // @property $createdAt declared only on the base class docblock
+        $this->assertSame('string', $createdAt->type, $version);
+        $this->assertSame('Creation timestamp', $createdAt->description, $version);
+        $this->assertSame(Undefined::UNDEFINED, $createdAt->readOnly, $version);
+
+        // $name declared on the subclass' own docblock
+        $this->assertSame('string', $name->type, $version);
+        $this->assertSame('Equipment name', $name->description, $version);
+    }
+
+    #[DataProvider('versions')]
+    public function testSubclassDocblockTagOverridesAncestorTag(string $version): void
+    {
+        $analysis = $this->analysisAtVersion(['ExpandedSchemaProperties.php'], $version);
+
+        $value = $this->schema($analysis, 'OverrideChild')->properties[0];
+        $this->assertSame('value', $value->property, $version);
+
+        // the subclass' `@property string $value` wins over the base's `@property-read int $value`
+        $this->assertSame('string', $value->type, $version);
+        $this->assertSame('Overridden string value', $value->description, $version);
+        $this->assertSame(Undefined::UNDEFINED, $value->readOnly, $version);
+    }
+
+    #[DataProvider('versions')]
+    public function testPicksVirtualPropertiesAcrossMultipleAncestorLevels(string $version): void
+    {
+        $analysis = $this->analysisAtVersion(['ExpandedSchemaProperties.php'], $version);
+
+        $child = $this->schema($analysis, 'MultiLevelChild');
+        $this->assertSame(['grandId', 'parentField', 'childFlag'], array_map(static fn (OA\Property $property): string => $property->property, $child->properties), $version);
+
+        [$grandId, $parentField, $childFlag] = $child->properties;
+
+        // declared two levels up (grandparent docblock)
+        $this->assertSame('integer', $grandId->type, $version);
+        $this->assertSame('Grandparent id', $grandId->description, $version);
+        $this->assertTrue($grandId->readOnly, $version);
+
+        // declared one level up (parent docblock)
+        $this->assertSame('string', $parentField->type, $version);
+        $this->assertSame('Parent field', $parentField->description, $version);
+
+        // declared on the child's own docblock
+        $this->assertSame('boolean', $childFlag->type, $version);
+        $this->assertSame('Child flag', $childFlag->description, $version);
     }
 
     /**

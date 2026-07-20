@@ -176,6 +176,11 @@ already set), and finally any `OA\Property` declared explicitly inside the schem
 onto the picked/inherited property rather than replacing it outright, so a picked property keeps its inferred type
 even when only its `format` or `enum` is overridden explicitly.
 
+The `@property`/`@property-read`/`@property-write` docblock tags are collected from the full class hierarchy, so a
+subclass can `pick` a virtual property declared only on an ancestor's docblock (for example an `id` a shared
+base class documents). When the same property name is declared at more than one level, the most-derived class's tag
+wins.
+
 <codeblock id="schema-projection-member">
   <template v-slot:at>
 

@@ -215,11 +215,40 @@ class TypeResolver
     }
 
     /**
-     * Extract virtual properties from a class-level PHPDoc block.
+     * Extract virtual properties from a class-level PHPDoc block, including
+     * any declared on ancestor classes' docblocks.
+     *
+     * The pool a subclass can `pick` from spans the full inheritance chain: a
+     * base class (e.g. an ActiveRecord base) may declare `@property-read $id`
+     * that derived classes rely on. Walking child->parent, the most-derived
+     * declaration of a given property name wins on collision.
      *
      * @return list<array{name: string, type: string, description: string, readOnly: bool, writeOnly: bool}>
      */
     public function getDocblockProperties(\ReflectionClass $class): array
+    {
+        $properties = [];
+        $seen = [];
+        for ($current = $class; $current instanceof \ReflectionClass; $current = $current->getParentClass() ?: null) {
+            foreach ($this->getLocalDocblockProperties($current) as $property) {
+                if (isset($seen[$property['name']])) {
+                    // a more-derived class already declared this name; keep it
+                    continue;
+                }
+                $seen[$property['name']] = true;
+                $properties[] = $property;
+            }
+        }
+
+        return $properties;
+    }
+
+    /**
+     * Extract virtual properties declared on a single class' own docblock.
+     *
+     * @return list<array{name: string, type: string, description: string, readOnly: bool, writeOnly: bool}>
+     */
+    private function getLocalDocblockProperties(\ReflectionClass $class): array
     {
         $docComment = $class->getDocComment();
         if (!$docComment) {
