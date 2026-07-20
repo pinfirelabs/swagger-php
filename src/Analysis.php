@@ -12,6 +12,48 @@ use OpenApi\Annotations as OA;
  * Result of the analyser.
  *
  * Pretends to be an array of annotations but also contains detected classes and helper functions for the processors.
+ *
+ * The type/interface/trait/enum definition shapes below are produced by the analysers
+ * (see StaticAnalyser and Analysers\ReflectionAnalyser::analyzeFqdn()); optional keys are
+ * only present depending on which analyser produced the entry / whether the member exists.
+ *
+ * @phpstan-type ClassDefinition array{
+ *     class: string,
+ *     extends: class-string|null,
+ *     implements?: list<class-string>,
+ *     traits?: list<class-string>,
+ *     properties: array<string, Context>,
+ *     methods: array<string, Context>,
+ *     constants?: array<string, Context>,
+ *     context: Context,
+ * }
+ * @phpstan-type InterfaceDefinition array{
+ *     interface: string,
+ *     extends: list<class-string>,
+ *     traits?: list<class-string>,
+ *     properties: array<string, Context>,
+ *     methods: array<string, Context>,
+ *     constants?: array<string, Context>,
+ *     context: Context,
+ * }
+ * @phpstan-type TraitDefinition array{
+ *     trait: string,
+ *     extends?: list<class-string>,
+ *     traits?: list<class-string>,
+ *     properties: array<string, Context>,
+ *     methods: array<string, Context>,
+ *     constants?: array<string, Context>,
+ *     context: Context,
+ * }
+ * @phpstan-type EnumDefinition array{
+ *     enum: string,
+ *     extends: list<class-string>,
+ *     traits?: list<class-string>,
+ *     properties: array<string, Context>,
+ *     methods: array<string, Context>,
+ *     constants?: array<string, Context>,
+ *     context: Context,
+ * }
  */
 class Analysis
 {
@@ -20,21 +62,29 @@ class Analysis
 
     /**
      * Class definitions.
+     *
+     * @var array<class-string, ClassDefinition>
      */
     public array $classes = [];
 
     /**
      * Interface definitions.
+     *
+     * @var array<class-string, InterfaceDefinition>
      */
     public array $interfaces = [];
 
     /**
      * Trait definitions.
+     *
+     * @var array<class-string, TraitDefinition>
      */
     public array $traits = [];
 
     /**
      * Enum definitions.
+     *
+     * @var array<class-string, EnumDefinition>
      */
     public array $enums = [];
 

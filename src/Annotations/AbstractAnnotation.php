@@ -41,7 +41,10 @@ abstract class AbstractAnnotation implements \JsonSerializable
     /**
      * Annotations that couldn't be merged by mapping or postprocessing.
      *
-     * @var array
+     * Populated by the constructor/mergeProperties and consumed by validate(),
+     * which expects each entry to be an annotation object (a warning is logged otherwise).
+     *
+     * @var list<AbstractAnnotation>
      */
     public $_unmerged = [];
 
@@ -55,6 +58,13 @@ abstract class AbstractAnnotation implements \JsonSerializable
     /**
      * Specify the type of the property.
      *
+     * Maps a property name to a type spec consumed by validate()/validateValueType():
+     *  - a scalar type name: 'string'|'boolean'|'integer'|'number'|'object'|'array'|'scheme'
+     *  - a fully-qualified AbstractAnnotation subclass (validated as an 'object')
+     *  - a '[type]' wrapper meaning a list whose items are of the inner type
+     *  - a '|'-delimited union of any of the above
+     * A value given as an array instead is an enumeration of the allowed literal values.
+     *
      * Examples:
      *   'name' => 'string'         // a string
      *   'required' => 'boolean',   // true or false
@@ -62,33 +72,38 @@ abstract class AbstractAnnotation implements \JsonSerializable
      *   'in' => ["query", "header", "path", "formData", "body"] // must be one on these
      *   'oneOf' => [Schema::class] // array of schema objects.
      *
-     * @var array<string,string|array<string>>
+     * @var array<string, string|array<string>>
      */
     public static $_types = [];
 
     /**
      * Declarative mapping of Annotation types to properties.
      *
+     * The value (read by matchNested()/validate()) selects how a matched nested annotation is stored:
+     *  - string $property: assign the annotation to that single property.
+     *  - [string $property]: append the annotation to that list property.
+     *  - [string $property, string $keyField]: add to that map property, keyed by the annotation's $keyField.
+     *
      * Examples:
      *   Info::class => 'info',                // Set @OA\Info annotation as the info property.
      *   Parameter::class => ['parameters'],   // Append @OA\Parameter annotations the parameters list.
      *   PathItem::class => ['paths', 'path'], // Add @OA\PathItem annotation to the `paths` map and use `path` as key.
      *
-     * @var array<class-string<AbstractAnnotation>,string|array<string>>
+     * @var array<class-string<AbstractAnnotation>, string|array{0: string}|array{0: string, 1: string}>
      */
     public static $_nested = [];
 
     /**
      * Reverse mapping of $_nested with the allowed parent annotations.
      *
-     * @var array<class-string<AbstractAnnotation>>
+     * @var list<class-string<AbstractAnnotation>>
      */
     public static $_parents = [];
 
     /**
      * Properties that are blacklisted from the JSON output.
      *
-     * @var array<string>
+     * @var list<string>
      */
     public static $_blacklist = ['_context', '_unmerged', '_analysis', 'attachables'];
 
