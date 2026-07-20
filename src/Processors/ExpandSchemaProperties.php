@@ -81,6 +81,26 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
             }
         }
 
+        // Explicit properties on a bound schema decorate single keys of the expanded
+        // shape. Stash them (and the object type AugmentSchemas stamped for them) so
+        // the shape still expands, then fold each override onto its expanded property.
+        $overrides = [];
+        if (!Undefined::isDefault($schema->properties)) {
+            foreach ((array) $schema->properties as $property) {
+                if (!$property instanceof OA\Property) {
+                    continue;
+                }
+                $name = Undefined::isDefault($property->property) ? $property->_context->property : $property->property;
+                if (is_string($name)) {
+                    $overrides[$name] = $property;
+                }
+            }
+            $schema->properties = Undefined::UNDEFINED;
+            if ($schema->type === 'object') {
+                $schema->type = Undefined::UNDEFINED;
+            }
+        }
+
         $this->generator->getTypeResolver()->augmentSchemaTypeFromString(
             $analysis,
             $schema,
@@ -89,6 +109,36 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
             OA\Schema::class,
             Undefined::isDefault($schema->refs) ? [] : $schema->refs,
         );
+
+        if ([] === $overrides) {
+            return;
+        }
+
+        $properties = [];
+        foreach (Undefined::isDefault($schema->properties) ? [] : (array) $schema->properties as $property) {
+            if ($property instanceof OA\Property && is_string($property->property)) {
+                $properties[$property->property] = $property;
+            }
+        }
+
+        foreach ($overrides as $name => $override) {
+            $expanded = $properties[$name] ?? null;
+            if ($expanded instanceof OA\Property) {
+                foreach (get_object_vars($override) as $field => $value) {
+                    if (str_starts_with($field, '_') || Undefined::isDefault($value)) {
+                        continue;
+                    }
+                    $expanded->{$field} = $value;
+                }
+                $analysis->removeAnnotation($override);
+            } else {
+                $override->property = $name;
+                $properties[$name] = $override;
+                $analysis->addAnnotation($override, $override->_context);
+            }
+        }
+
+        $schema->properties = array_values($properties);
     }
 
     /**
@@ -289,7 +339,7 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
      */
     private function compose(Analysis $analysis, OA\Schema $schema, OA\Schema $base, array $local): void
     {
-        $context = new Context(['generated' => true], $schema->_context);
+        $context = new Context(['generated' => true, 'comment' => null], $schema->_context);
         $ref = new OA\Schema([
             'ref' => OA\Components::ref($base),
             '_context' => $context,
@@ -302,6 +352,11 @@ class ExpandSchemaProperties implements GeneratorAwareInterface
         ]);
         $schema->properties = Undefined::UNDEFINED;
         $schema->required = Undefined::UNDEFINED;
+        // the type AugmentSchemas stamped for the (now moved) explicit properties would
+        // otherwise linger as a stray top-level `type` next to the allOf
+        if ($schema->type === 'object') {
+            $schema->type = Undefined::UNDEFINED;
+        }
         $schema->allOf = array_merge(Undefined::isDefault($schema->allOf) ? [] : $schema->allOf, [$ref, $payload]);
         $analysis->addAnnotation($ref, $ref->_context);
         $analysis->addAnnotation($payload, $payload->_context);

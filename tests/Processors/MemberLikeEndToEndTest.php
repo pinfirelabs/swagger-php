@@ -88,7 +88,6 @@ final class MemberLikeEndToEndTest extends OpenApiTestCase
         $schemas = $this->components($version)['schemas'];
 
         $this->assertEquals([
-            'type' => 'object',
             'allOf' => [
                 ['$ref' => self::REF . 'CreateMemberLike'],
                 [

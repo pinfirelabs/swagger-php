@@ -213,6 +213,7 @@ final class ExpandSchemaPropertiesTest extends OpenApiTestCase
 
         $derived = $this->schema($analysis, 'ProjectionValidationError');
         $this->assertSame(Undefined::UNDEFINED, $derived->properties);
+        $this->assertSame(Undefined::UNDEFINED, $derived->type, 'no stray top-level type next to the composed allOf');
         $this->assertCount(2, $derived->allOf);
         $this->assertSame('#/components/schemas/ProjectionError', $derived->allOf[0]->ref);
         $override = $derived->allOf[1]->properties[0];

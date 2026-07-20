@@ -128,14 +128,15 @@ final class ExpandTypeAliasesTest extends OpenApiTestCase
         $schemas = $this->schemas(self::FILES, new TypeInfoTypeResolver(), $version);
 
         // The alias binds to the user schema: a single named component carrying the
-        // user's description plus the alias body — no generated duplicate.
+        // user's description plus the alias body — no generated duplicate. An explicit
+        // property decorates its expanded counterpart without suppressing the shape.
         $this->assertArrayNotHasKey('InvoiceLine', $schemas);
         $this->assertEquals([
             'description' => 'A serialized invoice line',
             'type' => 'object',
             'properties' => [
                 'item' => ['$ref' => self::REF . 'OrderItem'],
-                'price' => ['type' => 'string'],
+                'price' => ['type' => 'string', 'description' => 'Decimal string amount', 'example' => '9.95'],
             ],
             'required' => ['item', 'price'],
         ], $schemas['InvoiceLineResponse']);
