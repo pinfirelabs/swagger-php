@@ -50,7 +50,10 @@ class AugmentProperties implements GeneratorAwareInterface
 
                 if ($typeAndDescription['description']) {
                     $property->description = trim($typeAndDescription['description']);
-                } elseif ($this->isDocblockRoot($property)) {
+                } elseif ($context->is('comment') && $this->isDocblockRoot($property)) {
+                    // only adopt docblock prose the property owns; an inherited
+                    // class-level comment (e.g. a nested property with no own
+                    // docblock) must not leak the class summary as a description
                     $property->description = $this->parseDocblock($context->comment);
                 }
             } elseif (null === $property->description) {

@@ -216,3 +216,20 @@ class ParentRecord extends GrandParentRecord
 class MultiLevelChild extends ParentRecord
 {
 }
+
+/**
+ * This is the model class for table "nested_explicit".
+ *
+ * The followings are the available columns in table 'nested_explicit':
+ * @property int $id Row id
+ */
+#[OAT\Schema(
+    schema: 'NestedExplicitNoDescription',
+    pick: ['id'],
+    properties: [
+        new OAT\Property(property: 'kind', type: 'string'),
+    ],
+)]
+class NestedExplicitNoDescription
+{
+}

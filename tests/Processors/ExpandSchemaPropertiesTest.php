@@ -297,6 +297,27 @@ final class ExpandSchemaPropertiesTest extends OpenApiTestCase
         $this->assertSame('Child flag', $childFlag->description, $version);
     }
 
+    #[DataProvider('versions')]
+    public function testNestedExplicitPropertyDoesNotInheritClassSummary(string $version): void
+    {
+        $analysis = $this->analysisAtVersion(['ExpandedSchemaProperties.php'], $version);
+
+        $schema = $this->schema($analysis, 'NestedExplicitNoDescription');
+
+        [$id, $kind] = $schema->properties;
+
+        // a nested explicit property with no own description must NOT inherit
+        // the class-level docblock summary ("This is the model class for
+        // table ...") as its own description
+        $this->assertSame('kind', $kind->property, $version);
+        $this->assertSame('string', $kind->type, $version);
+        $this->assertSame(Undefined::UNDEFINED, $kind->description, $version);
+
+        // a picked property keeps its own docblock description
+        $this->assertSame('id', $id->property, $version);
+        $this->assertSame('Row id', $id->description, $version);
+    }
+
     /**
      * @return array<int,object>
      */
